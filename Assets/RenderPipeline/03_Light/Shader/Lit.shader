@@ -1,4 +1,10 @@
-﻿Shader "Pipeline/Base/UnlitOpaque"
+﻿//-----
+//Created Date: Sunday, October 6th 2019, 4:24:44 pm
+//Author: XieYiFeng
+//-----
+
+
+Shader "Pipeline/Lit/Lit"
 {
     Properties
     {
@@ -6,14 +12,14 @@
     }
     SubShader
     {
-       	Tags { "RenderQueue"="Geometry" }
+        Tags { "RenderType"="Opaque" }
+        LOD 100
+
         Pass
-        {   
-            Tags{"LightMode" = "01BasePipeline"}
+        {
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-
             #include "Assets/_ShaderLibrary/MDRPLit.hlsl"
 
             struct appdata
@@ -35,7 +41,7 @@
             {
                 v2f o;
                 o.vertex = MRP_ObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                o.uv = v.uv*_MainTex_ST.xy+_MainTex_ST.zw;
                 return o;
             }
 

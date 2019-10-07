@@ -13,11 +13,12 @@
         Pass
         {
             Tags{"LightMode"="01BasePipeline"}
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "UnityCG.cginc"
 
+            
+            #include "Assets/_ShaderLibrary/MDRPLit.hlsl"
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -27,7 +28,6 @@
             struct v2f
             {
                 float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
                 float4 vertex : SV_POSITION;
             };
 
@@ -37,18 +37,17 @@
             v2f vert (appdata v)
             {
                 v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.vertex = MRP_ObjectToClipPos(v.vertex);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            float frag (v2f i) : SV_Target
             {
-                // sample the texture
-                fixed4 col = float4(tex2D(_MainTex, i.uv).rgb,_Alpha) ;
+                float col = float4(tex2D(_MainTex, i.uv).rgb,_Alpha) ;
                 return col;
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }

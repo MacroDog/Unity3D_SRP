@@ -1,48 +1,44 @@
-﻿Shader "Pipeline/Base/UnlitOpaque"
+﻿//-----
+//Created Date: Tuesday, October 1st 2019, 3:15:19 pm
+//Author: XieYiFeng
+//-----
+Shader "Pipeline/Batch/UnlitOpaque"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+        _Color("color",color) = (1,1,1,1)
     }
     SubShader
     {
-       	Tags { "RenderQueue"="Geometry" }
+       	Tags { "RenderQueue" = "Geometry" }
         Pass
         {   
-            Tags{"LightMode" = "01BasePipeline"}
+            Tags{"LightMode" = "02BatchPipeline"}
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
             #include "Assets/_ShaderLibrary/MDRPLit.hlsl"
-
+            float4 _Color;
             struct appdata
             {
                 float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
             };
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
             };
-
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-
             v2f vert (appdata v)
             {
                 v2f o;
-                o.vertex = MRP_ObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                float4 worldPos = mul(unity_ObjectToWorld, float4(v.vertex.xyz,1));
+                o.vertex = mul(unity_MatrixVP,worldPos);
                 return o;
             }
-
             float4 frag (v2f i) : SV_Target
             {
-                float4 col = tex2D(_MainTex, i.uv);
-                return col;
+                return _Color;
             }
             ENDHLSL
         }
