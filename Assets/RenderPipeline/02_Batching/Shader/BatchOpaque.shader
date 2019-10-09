@@ -17,8 +17,8 @@ Shader "Pipeline/Batch/UnlitOpaque"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #include "Assets/_ShaderLibrary/MDRPCommon.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-            #include "Assets/_ShaderLibrary/MDRPLit.hlsl"
             float4 _Color;
             struct appdata
             {

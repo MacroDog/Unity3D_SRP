@@ -2,15 +2,15 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class McLitPipelineAsset : RenderPipelineAsset
+public class MDLitPipelineAsset : RenderPipelineAsset
 {
     protected override RenderPipeline CreatePipeline()
     {
-        return new McLightPipeline();
+        return new MDLightPipeline();
     }
 }
 
-public class McLightPipeline : RenderPipeline
+public class MDLightPipeline : RenderPipeline
 {
 
     public readonly ShaderTagId m_ShaderTagId = new ShaderTagId("03LitPipeline");
@@ -33,7 +33,7 @@ public class McLightPipeline : RenderPipeline
         }
     }
 
-    public McLightPipeline()
+    public MDLightPipeline()
     {
         commandBuffer = new CommandBuffer();
     }

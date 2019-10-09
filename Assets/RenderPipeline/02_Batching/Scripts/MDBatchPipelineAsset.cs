@@ -1,24 +1,35 @@
-﻿using UnityEngine;
+﻿/*
+ * -----
+ * Created Date: Tuesday, October 1st 2019, 3:07:23 pm
+ * Author: XieYiFeng
+ * -----
+ */
+
+using UnityEngine;
 using UnityEngine.Rendering;
 
-[CreateAssetMenu(menuName = "Render Pipeline/Base")]
-public class McBasePipelineAsset : RenderPipelineAsset
+[ExecuteInEditMode]
+[CreateAssetMenu(menuName = "Render Pipeline/Batch")]
+public class MDBatchPipelineAsset : RenderPipelineAsset
 {
     protected override RenderPipeline CreatePipeline()
     {
-        return new McBasePipeline();
+        return new MDBatchPipeline();
     }
 }
 
-public class McBasePipeline : RenderPipeline
+public class MDBatchPipeline : RenderPipeline
 {
-    public readonly ShaderTagId m_ShaderTagId = new ShaderTagId("01BasePipeline");
-    public CommandBuffer commandBuffer;
+    public readonly ShaderTagId m_ShaderTagId = new ShaderTagId("02BatchPipeline");
 
-    public McBasePipeline()
+    public CommandBuffer commandBuffer;
+    bool enableDynamicBatch = true;
+    bool enableGPUInstance = true;
+    public MDBatchPipeline()
     {
         commandBuffer = new CommandBuffer();
     }
+
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
@@ -51,11 +62,14 @@ public class McBasePipeline : RenderPipeline
         commandBuffer.Clear();
         commandBuffer.ClearRenderTarget((CameraClearFlags.Depth & camera.clearFlags) != 0, (CameraClearFlags.Color & camera.clearFlags) != 0, camera.backgroundColor, camera.depth);
         context.ExecuteCommandBuffer(commandBuffer);
-        
+
         //init
         SortingSettings sortingSettings = new SortingSettings(camera);
         DrawingSettings drawSettings = new DrawingSettings(m_ShaderTagId, sortingSettings);
         FilteringSettings filterSettings = new FilteringSettings(RenderQueueRange.all);
+        drawSettings.enableDynamicBatching = enableDynamicBatch;
+        drawSettings.enableInstancing = enableGPUInstance;
+
 
         //Draw Skybox
         context.DrawSkybox(camera);
@@ -68,10 +82,10 @@ public class McBasePipeline : RenderPipeline
 
         // Draw Transparent
         sortingSettings.criteria = SortingCriteria.CommonTransparent;
+
         drawSettings.sortingSettings = sortingSettings;
         filterSettings.renderQueueRange = RenderQueueRange.transparent;
         context.DrawRenderers(cullingResults, ref drawSettings, ref filterSettings);
-
         context.Submit();
     }
 }

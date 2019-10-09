@@ -9,6 +9,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9d29ff9fd6ddf984db81c3786e378215, type: 3}
-  m_Name: McBatchPipelineAsset
+  m_Script: {fileID: 11500000, guid: b1826d18fce99924b81ad6e259305534, type: 3}
+  m_Name: MDBasePipelineAsset
   m_EditorClassIdentifier: 

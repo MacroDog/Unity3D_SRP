@@ -17,8 +17,8 @@
             #pragma vertex vert
             #pragma fragment frag
 
+            #include "Assets/_ShaderLibrary/MDRPCommon.hlsl"
             
-            #include "Assets/_ShaderLibrary/MDRPLit.hlsl"
             struct appdata
             {
                 float4 vertex : POSITION;

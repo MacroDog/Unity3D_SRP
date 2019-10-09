@@ -13,8 +13,7 @@
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-
-            #include "Assets/_ShaderLibrary/MDRPLit.hlsl"
+            #include "Assets/_ShaderLibrary/MDRPCommon.hlsl"
 
             struct appdata
             {

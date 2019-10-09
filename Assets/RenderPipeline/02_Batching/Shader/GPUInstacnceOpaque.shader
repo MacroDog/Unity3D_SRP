@@ -18,7 +18,8 @@
             #pragma fragment frag
 
 			#pragma multi_compile_instancing
-            #include "Assets/_ShaderLibrary/MDRPLit.hlsl"
+            
+            #include "Assets/_ShaderLibrary/MDRPCommon.hlsl"
             #include "Assets/_ShaderLibrary/MDRPMacro.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
             UNITY_INSTANCING_BUFFER_START(PerInstance)
