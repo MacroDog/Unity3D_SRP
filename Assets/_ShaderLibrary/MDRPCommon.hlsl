@@ -3,8 +3,8 @@
 
 
 #include "Assets/_ShaderLibrary/MDRPMacro.hlsl"
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 
 CBUFFER_START(UnityPerFrame)
 float4x4 unity_MatrixVP;
@@ -30,5 +30,17 @@ CBUFFER_END
 CBUFFER_START(UnityLightBuffer)
 float4 _LightColors[MRP_VISIBLE_LIGHT_COUNT];
 float4 _LightDirections[MRP_VISIBLE_LIGHT_COUNT];
+
+float4 DiffuseLightDir(int index){
+    if(MRP_VISIBLE_LIGHT_COUNT<index){
+        return float4(0,0,1,1);
+    }
+    return _LightDirections[index];
+}
+
+//返回的颜色包含衰减
+float4 DiffuseLightColor(int index,float4 worldPos){
+    return _LightColors[index];
+}
 CBUFFER_END
 #endif

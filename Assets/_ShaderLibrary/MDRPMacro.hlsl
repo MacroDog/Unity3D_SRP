@@ -1,6 +1,6 @@
 #ifndef MRP_MACRO_HLSL
 #define MRP_MACRO_HLSL
-#define MRP_VISIBLE_LIGHT_COUNT 2
+#define MRP_VISIBLE_LIGHT_COUNT 4
 #define UNITY_MATRIX_M     unity_ObjectToWorld
 #define UNITY_MATRIX_I_M   unity_WorldToObject
 #define UNITY_MATRIX_V     unity_MatrixV
