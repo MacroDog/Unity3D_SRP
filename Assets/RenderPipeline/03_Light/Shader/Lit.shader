@@ -49,7 +49,7 @@ Shader "Pipeline/Lit/Lit"
                 v2f o;
                 o.vertex = MRP_ObjectToClipPos(v.vertex);
                 o.worldNor  =  mul(UNITY_MATRIX_M,v.normal);
-                o.worldPos = mul(UNITY_MATRIX_M,o.vertex);
+                o.worldPos = mul(UNITY_MATRIX_M,v.vertex);
                 o.uv = v.uv*_MainTex_ST.xy+_MainTex_ST.zw;
                 return o;
             }
@@ -57,7 +57,7 @@ Shader "Pipeline/Lit/Lit"
             float4 frag (v2f i) : SV_Target
             {
                 float4 normal = normalize(i.worldNor);
-                float4 lightDir = DiffuseLightDir(0);
+                float4 lightDir = DiffuseLightDir(0,i.worldPos);
                 float albedo = max(0,dot(lightDir.xyz,normal.xyz))*DiffuseLightColor(0,i.worldPos);
                 float4 fcolor = albedo*_Color;
                 return  fcolor;
