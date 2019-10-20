@@ -49,7 +49,7 @@ Shader "Pipeline/Lit/Lit"
                 v2f o;
                 o.vertex = MRP_ObjectToClipPos(v.vertex);
                 o.worldNor  =  mul(UNITY_MATRIX_M,v.normal);
-                o.worldPos = mul(UNITY_MATRIX_M,o.vertex);
+                o.worldPos = mul(UNITY_MATRIX_M,v.vertex);
                 o.uv = v.uv*_MainTex_ST.xy+_MainTex_ST.zw;
                 return o;
             }

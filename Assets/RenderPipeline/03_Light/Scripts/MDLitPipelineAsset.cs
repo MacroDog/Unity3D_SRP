@@ -92,18 +92,18 @@ public class MDLightPipeline : RenderPipeline
             LightSpotDirections[i] = Vector4.zero;
             if (light.lightType == LightType.Directional)
             {
-                var v = cullingResults.visibleLights[i].localToWorldMatrix.GetColumn(2);
+                var v = light.localToWorldMatrix.GetColumn(2);
                 v.x = -v.x;
                 v.y = -v.y;
                 v.z = -v.z;
-                v.w = 1;// 
+                v.w = 0;// 
                 LightDirections[i] = v;
             }
             else
             {
                 LightDirections[i] = cullingResults.visibleLights[i].localToWorldMatrix.GetColumn(3);
-                LightAttenuations[i] = Vector4.zero;
-                LightAttenuations[i].x = 1 / (light.range * light.range);
+                 LightDirections[i].w = 1;
+                 LightAttenuations[i].x = Mathf.Max(1f / Mathf.Sqrt(light.range), 0.000001f);
                 if (light.lightType == LightType.Spot)
                 {
                     var dir = light.localToWorldMatrix.GetColumn(2);
@@ -130,6 +130,12 @@ public class MDLightPipeline : RenderPipeline
             LightDirections[i] = Vector4.zero;
             LightAttenuations[i] = Vector4.zero;
             LightColors[i] = Vector4.zero;
+        }
+        for (; i < MRP_VISABLE_COUNT; i++)
+        {
+            LightColors[i] = Vector4.zero;
+            LightDirections[i] = Vector4.zero;
+            LightDirections[i] = Vector4.zero;
         }
         commandBuffer.Clear();
         commandBuffer.SetGlobalVectorArray(_LightDirectionsID, LightDirections);
