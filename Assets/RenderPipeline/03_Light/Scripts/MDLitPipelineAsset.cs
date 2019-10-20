@@ -18,7 +18,7 @@ public class MDLightPipeline : RenderPipeline
     public int MRP_VISABLE_COUNT = 4;
     static int _LightColorId = Shader.PropertyToID("_LightColors");
     static int _LightDirectionsID = Shader.PropertyToID("_LightDirections");
-    static int _LightAttenuationID = Shader.PropertyToID("_LightAttenuation");
+    static int _LightAttenuationID = Shader.PropertyToID("_LightAttenuations");
     static int _LightSpotDirectionID = Shader.PropertyToID("_LightSpotDirections");
     private Vector4[] LightColors;
     private Vector4[] LightDirections;
@@ -31,7 +31,6 @@ public class MDLightPipeline : RenderPipeline
     }
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
     {
-
         foreach (var camera in cameras)
         {
             Render(context, camera);
@@ -62,6 +61,7 @@ public class MDLightPipeline : RenderPipeline
         {
             ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
         }
+        context.SetupCameraProperties(camera);
 #endif
         context.SetupCameraProperties(camera);
 
@@ -80,16 +80,18 @@ public class MDLightPipeline : RenderPipeline
         context.DrawSkybox(camera);
 
         //light
-        var lightcount = Mathf.Min(cullingResults.lightIndexCount, MRP_VISABLE_COUNT);
+        var lightcount = Mathf.Min(cullingResults.visibleLights.Length, MRP_VISABLE_COUNT);
         LightColors = new Vector4[MRP_VISABLE_COUNT];
         LightDirections = new Vector4[MRP_VISABLE_COUNT];
         LightAttenuations = new Vector4[MRP_VISABLE_COUNT];
         LightSpotDirections = new Vector4[MRP_VISABLE_COUNT];
+       // Debug.Log(cullingResults.visibleLights.Length);
         int i = 0;
         for (; i < lightcount; i++)
         {
             var light = cullingResults.visibleLights[i];
             LightSpotDirections[i] = Vector4.zero;
+            LightAttenuations[i].w = 1f;
             if (light.lightType == LightType.Directional)
             {
                 var v = light.localToWorldMatrix.GetColumn(2);
@@ -102,8 +104,12 @@ public class MDLightPipeline : RenderPipeline
             else
             {
                 LightDirections[i] = cullingResults.visibleLights[i].localToWorldMatrix.GetColumn(3);
-                 LightDirections[i].w = 1;
-                 LightAttenuations[i].x = Mathf.Max(1f / Mathf.Sqrt(light.range), 0.000001f);
+                LightDirections[i].w = 1;
+
+                //衰减 (1-(dir^2/range^2)^2)^2
+                LightAttenuations[i].x = 1f / Mathf.Max(Mathf.Sqrt(light.range), 0.000001f);
+
+                //spot fade (lightPos*lightDir)-cos(r_out)/cos(r_in)-cos(r_out)
                 if (light.lightType == LightType.Spot)
                 {
                     var dir = light.localToWorldMatrix.GetColumn(2);
@@ -122,7 +128,7 @@ public class MDLightPipeline : RenderPipeline
                     LightAttenuations[i].w = -outerCos * LightAttenuations[i].z;
                 }
             }
-            LightColors[i] = cullingResults.visibleLights[i].finalColor;
+            LightColors[i] = light.finalColor;
         }
         for (; i < MRP_VISABLE_COUNT; i++)
         {
@@ -131,17 +137,11 @@ public class MDLightPipeline : RenderPipeline
             LightAttenuations[i] = Vector4.zero;
             LightColors[i] = Vector4.zero;
         }
-        for (; i < MRP_VISABLE_COUNT; i++)
-        {
-            LightColors[i] = Vector4.zero;
-            LightDirections[i] = Vector4.zero;
-            LightDirections[i] = Vector4.zero;
-        }
         commandBuffer.Clear();
         commandBuffer.SetGlobalVectorArray(_LightDirectionsID, LightDirections);
         commandBuffer.SetGlobalVectorArray(_LightColorId, LightColors);
         commandBuffer.SetGlobalVectorArray(_LightAttenuationID, LightAttenuations);
-        commandBuffer.SetGlobalVectorArray(_LightSpotDirectionID,LightSpotDirections);
+        commandBuffer.SetGlobalVectorArray(_LightSpotDirectionID, LightSpotDirections);
         context.ExecuteCommandBuffer(commandBuffer);
         //qaueue
         filteringSettings.renderQueueRange = RenderQueueRange.opaque;
