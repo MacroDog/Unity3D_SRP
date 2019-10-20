@@ -11,7 +11,6 @@ float4x4 unity_MatrixVP;
 CBUFFER_END
 
 CBUFFER_START(UnityPerDraw)
-
 float4x4 unity_ObjectToWorld;
 
 float4 MRP_ObjectToClipPos(float4 vertex){
@@ -28,18 +27,23 @@ CBUFFER_END
 
 
 CBUFFER_START(UnityLightBuffer)
-float4 _LightColors[MRP_VISIBLE_LIGHT_COUNT];
-float4 _LightDirections[MRP_VISIBLE_LIGHT_COUNT];
+float4 _LightColors[MDRP_VISIBLE_LIGHT_COUNT];
+float4 _LightDirections[MDRP_VISIBLE_LIGHT_COUNT];
+float4 _LightSpotDirections[MDRP_VISIBLE_LIGHT_COUNT]
 
-float4 DiffuseLightDir(int index){
-    if(MRP_VISIBLE_LIGHT_COUNT<index){
+float4 DiffuseLightDir(int index,float4 worldPos){
+    if(MDRP_VISIBLE_LIGHT_COUNT < index){
         return float4(0,0,1,1);
     }
-    return _LightDirections[index];
+    return _LightDirections[i]-worldPos*_LightDirections.w;
 }
 
 //返回的颜色包含衰减
 float4 DiffuseLightColor(int index,float4 worldPos){
+    float4 dirtion = _LightDirections[i]-worldPos*_LightDirections.w;
+    float distancespr = max(dot(_LightDirections[i],_LightDirections[i]),0.00001);
+    
+    float spotfede = dot(_LightDirections[i] , _LightSpotDirections[i])*    
     return _LightColors[index];
 }
 CBUFFER_END

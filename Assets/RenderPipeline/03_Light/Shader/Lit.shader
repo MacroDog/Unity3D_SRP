@@ -57,7 +57,7 @@ Shader "Pipeline/Lit/Lit"
             float4 frag (v2f i) : SV_Target
             {
                 float4 normal = normalize(i.worldNor);
-                float4 lightDir = DiffuseLightDir(0);
+                float4 lightDir = DiffuseLightDir(0,i.worldPos);
                 float albedo = max(0,dot(lightDir.xyz,normal.xyz))*DiffuseLightColor(0,i.worldPos);
                 float4 fcolor = albedo*_Color;
                 return  fcolor;

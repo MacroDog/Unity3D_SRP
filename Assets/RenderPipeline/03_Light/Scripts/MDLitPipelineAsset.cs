@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-[CreateAssetMenu(menuName="Render Pipeline/Lit")]
+[CreateAssetMenu(menuName = "Render Pipeline/Lit")]
 public class MDLitPipelineAsset : RenderPipelineAsset
 {
     protected override RenderPipeline CreatePipeline()
@@ -18,8 +18,12 @@ public class MDLightPipeline : RenderPipeline
     public int MRP_VISABLE_COUNT = 4;
     static int _LightColorId = Shader.PropertyToID("_LightColors");
     static int _LightDirectionsID = Shader.PropertyToID("_LightDirections");
+    static int _LightAttenuationID = Shader.PropertyToID("_LightAttenuation");
+    static int _LightSpotDirectionID = Shader.PropertyToID("_LightSpotDirections");
     private Vector4[] LightColors;
     private Vector4[] LightDirections;
+    private Vector4[] LightAttenuations;
+    private Vector4[] LightSpotDirections;
     public CommandBuffer commandBuffer
     {
         get;
@@ -77,12 +81,16 @@ public class MDLightPipeline : RenderPipeline
 
         //light
         var lightcount = Mathf.Min(cullingResults.lightIndexCount, MRP_VISABLE_COUNT);
-        LightColors = new Vector4[lightcount];
-        LightDirections = new Vector4[lightcount];
+        LightColors = new Vector4[MRP_VISABLE_COUNT];
+        LightDirections = new Vector4[MRP_VISABLE_COUNT];
+        LightAttenuations = new Vector4[MRP_VISABLE_COUNT];
+        LightSpotDirections = new Vector4[MRP_VISABLE_COUNT];
         int i = 0;
         for (; i < lightcount; i++)
         {
-            if (cullingResults.visibleLights[i].lightType == LightType.Directional)
+            var light = cullingResults.visibleLights[i];
+            LightSpotDirections[i] = Vector4.zero;
+            if (light.lightType == LightType.Directional)
             {
                 var v = cullingResults.visibleLights[i].localToWorldMatrix.GetColumn(2);
                 v.x = -v.x;
@@ -90,23 +98,49 @@ public class MDLightPipeline : RenderPipeline
                 v.z = -v.z;
                 v.w = 1;// 
                 LightDirections[i] = v;
-                LightColors[i] = cullingResults.visibleLights[i].finalColor;
-            }else{
-                 LightDirections[i] = cullingResults.visibleLights[i].localToWorldMatrix.GetColumn(3);
             }
+            else
+            {
+                LightDirections[i] = cullingResults.visibleLights[i].localToWorldMatrix.GetColumn(3);
+                LightAttenuations[i] = Vector4.zero;
+                LightAttenuations[i].x = 1 / (light.range * light.range);
+                if (light.lightType == LightType.Spot)
+                {
+                    var dir = light.localToWorldMatrix.GetColumn(2);
+                    dir.x = -dir.x;
+                    dir.y = -dir.y;
+                    dir.z = -dir.z;
+                    LightSpotDirections[i] = dir;
+                    var outerRad = Mathf.Deg2Rad * 0.5f * light.spotAngle;
+                    var outerCos = Mathf.Cos(outerRad);
+                    //tan(r_in) = 46/64*tan(r_out)
+                    var outerTan = Mathf.Tan(outerRad);
+                    var innerCos = Mathf.Cos(Mathf.Atan(23 / 32 * outerTan));
+
+
+                    LightAttenuations[i].z = 1 / Mathf.Max(innerCos - outerCos, 0.0001f);
+                    LightAttenuations[i].w = -outerCos * LightAttenuations[i].z;
+                }
+            }
+            LightColors[i] = cullingResults.visibleLights[i].finalColor;
+        }
+        for (; i < MRP_VISABLE_COUNT; i++)
+        {
+            LightSpotDirections[i] = Vector4.zero;
+            LightDirections[i] = Vector4.zero;
+            LightAttenuations[i] = Vector4.zero;
+            LightColors[i] = Vector4.zero;
         }
         commandBuffer.Clear();
-        commandBuffer.SetGlobalVectorArray(_LightDirectionsID,LightDirections);
-        commandBuffer.SetGlobalVectorArray(_LightColorId,LightColors);
-        context.ExecuteCommandBuffer(commandBuffer);    
+        commandBuffer.SetGlobalVectorArray(_LightDirectionsID, LightDirections);
+        commandBuffer.SetGlobalVectorArray(_LightColorId, LightColors);
+        commandBuffer.SetGlobalVectorArray(_LightAttenuationID, LightAttenuations);
+        commandBuffer.SetGlobalVectorArray(_LightSpotDirectionID,LightSpotDirections);
+        context.ExecuteCommandBuffer(commandBuffer);
         //qaueue
         filteringSettings.renderQueueRange = RenderQueueRange.opaque;
         sortingSettings.criteria = SortingCriteria.CommonOpaque;
         context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSettings);
-
-
         context.Submit();
     }
-
-
 }
