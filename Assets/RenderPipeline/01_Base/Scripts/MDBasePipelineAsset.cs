@@ -30,13 +30,13 @@ public class MDBasePipeline : RenderPipeline
         BeginFrameRendering(cameras);
         foreach (var camera in cameras)
         {
-            BeginCameraRendering(camera);
             Render(context, camera);
         }
     }
 
     private void Render(ScriptableRenderContext context, Camera camera)
     {
+        BeginCameraRendering(camera);
         ScriptableCullingParameters cullingParameters;
         if (!camera.TryGetCullingParameters(out cullingParameters))
         {
@@ -49,7 +49,7 @@ public class MDBasePipeline : RenderPipeline
 
         // commandBuff
         commandBuffer.Clear();
-        commandBuffer.ClearRenderTarget((CameraClearFlags.Depth & camera.clearFlags) != 0, (CameraClearFlags.Color & camera.clearFlags) != 0, camera.backgroundColor, camera.depth);
+        commandBuffer.ClearRenderTarget((CameraClearFlags.Depth & camera.clearFlags) != 0, (CameraClearFlags.Color & camera.clearFlags) != 0, camera.backgroundColor);
         context.ExecuteCommandBuffer(commandBuffer);
         
         //init

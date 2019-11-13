@@ -1,4 +1,5 @@
 ﻿
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,7 +16,7 @@ public class MDLightPipeline : RenderPipeline
 {
 
     public readonly ShaderTagId m_ShaderTagId = new ShaderTagId("03LitPipeline");
-    public int MRP_VISABLE_COUNT = 4;
+    public int MAX_VISABLE_COUNT = 4;
     static int _LightColorId = Shader.PropertyToID("_LightColors");
     static int _LightDirectionsID = Shader.PropertyToID("_LightDirections");
     static int _LightAttenuationID = Shader.PropertyToID("_LightAttenuations");
@@ -24,13 +25,22 @@ public class MDLightPipeline : RenderPipeline
     private Vector4[] LightDirections;
     private Vector4[] LightAttenuations;
     private Vector4[] LightSpotDirections;
-    public CommandBuffer commandBuffer
+
+    private RenderTexture shadowMap;
+    public CommandBuffer cameraBuffer
+    {
+        get;
+        private set;
+    }
+
+    public CommandBuffer shadowBuffer
     {
         get;
         private set;
     }
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
     {
+        BeginFrameRendering(cameras);
         foreach (var camera in cameras)
         {
             Render(context, camera);
@@ -39,56 +49,68 @@ public class MDLightPipeline : RenderPipeline
 
     public MDLightPipeline()
     {
-        commandBuffer = new CommandBuffer();
+        cameraBuffer = new CommandBuffer()
+        {
+            name = "Camera Buffer"
+        };
+        shadowBuffer = new CommandBuffer()
+        {
+            name = "Shadow Buffer"
+        };
     }
 
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposed);
-        commandBuffer.Release();
+        cameraBuffer.Release();
     }
 
     private void Render(ScriptableRenderContext context, Camera camera)
     {
+        BeginCameraRendering(camera);
         ScriptableCullingParameters parameters;
         if (!camera.TryGetCullingParameters(out parameters))
         {
             return;
         }
+        CullingResults cullingResults = context.Cull(ref parameters);
 
-#if UNITY_EDITOR
-        if (camera.cameraType == CameraType.SceneView)
-        {
-            ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
-        }
-        context.SetupCameraProperties(camera);
-#endif
         context.SetupCameraProperties(camera);
 
 
-        commandBuffer.Clear();
-        commandBuffer.ClearRenderTarget((camera.clearFlags & CameraClearFlags.Depth) != 0, (camera.clearFlags & CameraClearFlags.Color) != 0, camera.backgroundColor, camera.depth);
-        context.ExecuteCommandBuffer(commandBuffer);
+        cameraBuffer.Clear();
+        cameraBuffer.ClearRenderTarget((camera.clearFlags & CameraClearFlags.Depth) != 0, (camera.clearFlags & CameraClearFlags.Color) != 0, camera.backgroundColor);
+        context.ExecuteCommandBuffer(cameraBuffer);
 
         //init
-        CullingResults cullingResults = context.Cull(ref parameters);
+
         FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.all);
         SortingSettings sortingSettings = new SortingSettings();
         DrawingSettings drawingSettings = new DrawingSettings(m_ShaderTagId, sortingSettings);
+        RenderShawder(context);
+
+        //  cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives();
+
 
         //drawSkybox
         context.DrawSkybox(camera);
 
-        //light
-        var lightcount = Mathf.Min(cullingResults.visibleLights.Length, MRP_VISABLE_COUNT);
-        LightColors = new Vector4[MRP_VISABLE_COUNT];
-        LightDirections = new Vector4[MRP_VISABLE_COUNT];
-        LightAttenuations = new Vector4[MRP_VISABLE_COUNT];
-        LightSpotDirections = new Vector4[MRP_VISABLE_COUNT];
-       // Debug.Log(cullingResults.visibleLights.Length);
-        int i = 0;
-        for (; i < lightcount; i++)
+        #region light
+        var lightcount = Mathf.Min(cullingResults.visibleLights.Length, MAX_VISABLE_COUNT);
+        LightColors = new Vector4[MAX_VISABLE_COUNT];
+        LightDirections = new Vector4[MAX_VISABLE_COUNT];
+        LightAttenuations = new Vector4[MAX_VISABLE_COUNT];
+        LightSpotDirections = new Vector4[MAX_VISABLE_COUNT];
+        for (int i = 0; i < cullingResults.visibleLights.Length; i++)
         {
+            if (i == MAX_VISABLE_COUNT)
+            {
+                break;
+            }
+            LightSpotDirections[i] = Vector4.zero;
+            LightDirections[i] = Vector4.zero;
+            LightAttenuations[i] = Vector4.zero;
+            LightColors[i] = Vector4.zero;
             var light = cullingResults.visibleLights[i];
             LightSpotDirections[i] = Vector4.zero;
             LightAttenuations[i].w = 1f;
@@ -122,31 +144,53 @@ public class MDLightPipeline : RenderPipeline
                     //tan(r_in) = 46/64*tan(r_out)
                     var outerTan = Mathf.Tan(outerRad);
                     var innerCos = Mathf.Cos(Mathf.Atan(23 / 32 * outerTan));
-
-
                     LightAttenuations[i].z = 1 / Mathf.Max(innerCos - outerCos, 0.0001f);
                     LightAttenuations[i].w = -outerCos * LightAttenuations[i].z;
                 }
             }
             LightColors[i] = light.finalColor;
         }
-        for (; i < MRP_VISABLE_COUNT; i++)
+        if (cullingResults.visibleLights.Length > MAX_VISABLE_COUNT)
         {
-            LightSpotDirections[i] = Vector4.zero;
-            LightDirections[i] = Vector4.zero;
-            LightAttenuations[i] = Vector4.zero;
-            LightColors[i] = Vector4.zero;
+            NativeArray<int> lightMap = cullingResults.GetLightIndexMap(Allocator.Invalid);
+            for (int i = MAX_VISABLE_COUNT; i < cullingResults.visibleLights.Length; i++)
+            {
+                lightMap[i] = -1;
+            }
+            cullingResults.SetLightIndexMap(lightMap);
+            lightMap.Dispose();
         }
-        commandBuffer.Clear();
-        commandBuffer.SetGlobalVectorArray(_LightDirectionsID, LightDirections);
-        commandBuffer.SetGlobalVectorArray(_LightColorId, LightColors);
-        commandBuffer.SetGlobalVectorArray(_LightAttenuationID, LightAttenuations);
-        commandBuffer.SetGlobalVectorArray(_LightSpotDirectionID, LightSpotDirections);
-        context.ExecuteCommandBuffer(commandBuffer);
+        cameraBuffer.Clear();
+        cameraBuffer.SetGlobalVectorArray(_LightDirectionsID, LightDirections);
+        cameraBuffer.SetGlobalVectorArray(_LightColorId, LightColors);
+        cameraBuffer.SetGlobalVectorArray(_LightAttenuationID, LightAttenuations);
+        cameraBuffer.SetGlobalVectorArray(_LightSpotDirectionID, LightSpotDirections);
+        context.ExecuteCommandBuffer(cameraBuffer);
+        #endregion
         //qaueue
         filteringSettings.renderQueueRange = RenderQueueRange.opaque;
         sortingSettings.criteria = SortingCriteria.CommonOpaque;
         context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSettings);
         context.Submit();
+        if (shadowMap)
+        {
+            RenderTexture.ReleaseTemporary(shadowMap);
+            shadowMap = null;
+        }
+    }
+
+    private void RenderShawder(ScriptableRenderContext context)
+    {
+        shadowMap = RenderTexture.GetTemporary(512, 512, 32, RenderTextureFormat.Shadowmap);
+        shadowMap.filterMode = FilterMode.Bilinear;
+        shadowMap.wrapMode = TextureWrapMode.Clamp;
+        CoreUtils.SetRenderTarget(shadowBuffer, shadowMap);
+        shadowBuffer.BeginSample("Render Shadow");
+        context.ExecuteCommandBuffer(shadowBuffer);
+        shadowBuffer.Clear();
+        shadowBuffer.EndSample("Rneder Shadow");
+        context.ExecuteCommandBuffer(shadowBuffer);
+        shadowBuffer.Clear();
+
     }
 }
